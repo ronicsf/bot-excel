@@ -38,3 +38,53 @@ Time: 22:30
 Phone Number: +5519920014005
 Message: Olá willian , sou um bot enviado pelo Roni para teste
 --------------------
+Date: 2/8/2025
+Time: 23:7
+Phone Number: +5519997092899
+Message: Olá Roni Cleiton souza , Sua mensalidade esta expirando gostaria de renovar ?
+--------------------
+Date: 2/8/2025
+Time: 23:36
+Phone Number: +5519997092899
+Message: Olá Roni Cleiton souza , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 2/8/2025
+Time: 23:36
+Phone Number: +5519982626830
+Message: Olá roni cleiton , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 2/8/2025
+Time: 23:38
+Phone Number: +5519997092899
+Message: Olá Roni Cleiton souza , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 2/8/2025
+Time: 23:39
+Phone Number: +5519982626830
+Message: Olá roni cleiton , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 2/8/2025
+Time: 23:39
+Phone Number: +5519982626830
+Message: Olá roni , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 2/8/2025
+Time: 23:59
+Phone Number: +5519997092899
+Message: Olá Roni Cleiton souza , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 2/8/2025
+Time: 23:59
+Phone Number: +5519982626830
+Message: Olá roni cleiton , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 2/8/2025
+Time: 23:59
+Phone Number: +5519982626830
+Message: Olá roni , parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
+Date: 3/8/2025
+Time: 0:0
+Phone Number: +55194646464646
+Message: Olá fdiens, parabéns pelo seu aniversário de cadastro! 🎉
+--------------------
