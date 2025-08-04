@@ -1,6 +1,5 @@
 import pandas as pd
 from datetime import datetime
-import pywhatkit as kit
 import time
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -9,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 import pyautogui
 import traceback
 import os
+import pyperclip
 
 ARQUIVO_EXCEL = "clientes.xlsx"
 IMAGEM_BOTAO = "botao_enviar.png"
@@ -25,11 +25,22 @@ criar_arquivo_se_nao_existir()
 def enviar_mensagem_whatsapp(telefone, mensagem):
     try:
         print(f"▶️ Enviando para {telefone}...")
-        kit.sendwhatmsg_instantly(telefone, mensagem, wait_time=20, tab_close=False)
-        time.sleep(12)  # Tempo para WhatsApp abrir
 
-        # Aguarda e clica no botão "enviar"
-        for tentativa in range(10):  # tenta por até ~10 segundos
+        # Abre conversa no WhatsApp Web
+        url = f"https://web.whatsapp.com/send?phone={telefone}"
+        pyautogui.hotkey('ctrl', 'l')  # seleciona a barra de endereços
+        pyperclip.copy(url)
+        pyautogui.hotkey('ctrl', 'v')
+        pyautogui.press('enter')
+
+        time.sleep(12)  # Espera carregar a conversa
+
+        # Cola e envia a mensagem
+        pyperclip.copy(mensagem)
+        pyautogui.hotkey("ctrl", "v")
+
+        # Tenta clicar no botão "enviar"
+        for tentativa in range(10):
             botao = pyautogui.locateCenterOnScreen(IMAGEM_BOTAO, confidence=0.8)
             if botao:
                 pyautogui.click(botao)
@@ -37,7 +48,8 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
                 break
             time.sleep(1)
         else:
-            raise Exception("❌ Botão de enviar não encontrado na tela.")
+            pyautogui.press("enter")
+            print("⚠️ Botão não encontrado, enviando com ENTER.")
 
         time.sleep(2)
 
@@ -199,5 +211,3 @@ status_label = tk.Label(janela, text="")
 status_label.pack()
 
 janela.mainloop()
-
-
