@@ -8,12 +8,10 @@ from dateutil.relativedelta import relativedelta
 import pyautogui
 import traceback
 import os
-import pyperclip
+import webbrowser
 
 ARQUIVO_EXCEL = "clientes.xlsx"
-IMAGEM_BOTAO = "botao_enviar.png"
 
-# ------------------- CRIA ARQUIVO SE NÃO EXISTIR -------------------
 def criar_arquivo_se_nao_existir():
     if not os.path.exists(ARQUIVO_EXCEL):
         df = pd.DataFrame(columns=["Nome", "Telefone", "Data Criacao", "Vencimento", "Pagou"])
@@ -21,44 +19,53 @@ def criar_arquivo_se_nao_existir():
 
 criar_arquivo_se_nao_existir()
 
-# ------------------- ENVIO WHATSAPP -------------------
+def abrir_whatsapp_web():
+    if not hasattr(abrir_whatsapp_web, "ja_abriu"):
+        webbrowser.open("https://web.whatsapp.com")
+        print("▶️ Abrindo WhatsApp Web...")
+        time.sleep(20)  # Tempo para escanear o QR Code
+        abrir_whatsapp_web.ja_abriu = True
+
 def enviar_mensagem_whatsapp(telefone, mensagem):
     try:
         print(f"▶️ Enviando para {telefone}...")
+        abrir_whatsapp_web()
 
-        # Abre conversa no WhatsApp Web
-        url = f"https://web.whatsapp.com/send?phone={telefone}"
-        pyautogui.hotkey('ctrl', 'l')  # seleciona a barra de endereços
-        pyperclip.copy(url)
-        pyautogui.hotkey('ctrl', 'v')
-        pyautogui.press('enter')
-
-        time.sleep(12)  # Espera carregar a conversa
-
-        # Cola e envia a mensagem
-        pyperclip.copy(mensagem)
-        pyautogui.hotkey("ctrl", "v")
-
-        # Tenta clicar no botão "enviar"
-        for tentativa in range(10):
-            botao = pyautogui.locateCenterOnScreen(IMAGEM_BOTAO, confidence=0.8)
-            if botao:
-                pyautogui.click(botao)
-                print(f"✅ Mensagem enviada para {telefone}")
+        # Localiza o campo de busca usando imagem
+        busca = None
+        for _ in range(10):  # tenta localizar por até 10 segundos
+            busca = pyautogui.locateCenterOnScreen("barra_busca.png", confidence=0.8)
+            if busca:
                 break
             time.sleep(1)
-        else:
-            pyautogui.press("enter")
-            print("⚠️ Botão não encontrado, enviando com ENTER.")
 
+        if not busca:
+            raise Exception("❌ Campo de busca do WhatsApp Web não encontrado. Verifique a imagem 'barra_busca.png'.")
+
+        pyautogui.click(busca)
+        time.sleep(1)
+
+        # Digita o telefone no campo de busca
+        pyautogui.write(telefone)
+        time.sleep(2)
+        pyautogui.press("enter")
+        time.sleep(2)
+
+        # Escreve e envia a mensagem
+        pyautogui.write(mensagem)
+        time.sleep(1)
+        pyautogui.press("enter")
+
+        print(f"✅ Mensagem enviada para {telefone}")
         time.sleep(2)
 
     except Exception as e:
         traceback.print_exc()
         print(f"❌ Erro ao enviar mensagem para {telefone}: {e}")
 
-# ------------------- VERIFICAR VENCIMENTO E ENVIAR -------------------
 def verificaData_com_progresso():
+    abrir_whatsapp_web()
+
     df = pd.read_excel(ARQUIVO_EXCEL)
     df["Vencimento"] = pd.to_datetime(df["Vencimento"]).dt.date
     df["Pagou"] = df["Pagou"].fillna(False)
@@ -94,7 +101,6 @@ def verificaData_com_progresso():
     messagebox.showinfo("Mensagens Enviadas", "Mensagens enviadas. Agora confirme os pagamentos.")
     exibir_confirmacoes(clientes_pendentes)
 
-# ------------------- CONFIRMAÇÃO DE PAGAMENTO -------------------
 def exibir_confirmacoes(clientes):
     def confirmar_pagamento(i):
         nome = clientes.at[i, "Nome"]
@@ -137,7 +143,6 @@ def exibir_confirmacoes(clientes):
     if len(clientes) == 0:
         tk.Label(janela_confirma, text="Nenhum cliente pendente.").pack(pady=20)
 
-# ------------------- CADASTRO -------------------
 def salvar_cliente():
     nome = entry_nome.get()
     telefone = entry_telefone.get()
@@ -176,7 +181,7 @@ def iniciar_envio_em_thread():
     thread = threading.Thread(target=verificaData_com_progresso)
     thread.start()
 
-# ------------------- INTERFACE PRINCIPAL -------------------
+# ------------------- INTERFACE -------------------
 janela = tk.Tk()
 janela.title("Cadastro e Controle de Clientes")
 janela.geometry("420x500")
