@@ -68,7 +68,6 @@ def verificaData_com_progresso():
     df["Pagou"] = df["Pagou"].fillna(False)
 
     hoje = datetime.today().date()
-    # agora pega clientes vencidos ou que vencem hoje
     clientes_pendentes = df[(df["Vencimento"] <= hoje) & (df["Pagou"] == False)]
 
     total = len(clientes_pendentes)
@@ -114,6 +113,16 @@ def exibir_confirmacoes(clientes):
         janela_confirma.destroy()
         atualizar_vencimento_restante()
 
+    def deletar_cliente(i):
+        nome = clientes.at[i, "Nome"]
+        df = pd.read_excel(ARQUIVO_EXCEL)
+        df = df[df["Nome"] != nome]  # remove o cliente
+        df.to_excel(ARQUIVO_EXCEL, index=False)
+
+        messagebox.showinfo("Cliente Deletado", f"{nome} foi removido da lista de clientes.")
+        janela_confirma.destroy()
+        atualizar_vencimento_restante()
+
     def atualizar_vencimento_restante():
         df_atual = pd.read_excel(ARQUIVO_EXCEL)
         df_atual["Vencimento"] = pd.to_datetime(df_atual["Vencimento"]).dt.date
@@ -124,7 +133,7 @@ def exibir_confirmacoes(clientes):
 
     janela_confirma = tk.Toplevel(janela)
     janela_confirma.title("Confirmar Pagamentos")
-    janela_confirma.geometry("450x350")
+    janela_confirma.geometry("500x400")
 
     tk.Label(janela_confirma, text="Clientes vencidos ou vencendo hoje:").pack(pady=10)
 
@@ -135,9 +144,13 @@ def exibir_confirmacoes(clientes):
         nome = row["Nome"]
         telefone = row["Telefone"]
         vencimento = row["Vencimento"]
-        tk.Label(frame, text=f"{nome} - {telefone} | Vencido desde: {vencimento}", width=50, anchor="w").pack(side="left")
-        btn = tk.Button(frame, text="Confirmar Pagamento", command=lambda i=i: confirmar_pagamento(i))
-        btn.pack(side="right")
+        tk.Label(frame, text=f"{nome} - {telefone} | Vencido desde: {vencimento}", width=45, anchor="w").pack(side="left")
+
+        btn_conf = tk.Button(frame, text="Confirmar Pagamento", command=lambda i=i: confirmar_pagamento(i))
+        btn_conf.pack(side="right", padx=2)
+
+        btn_del = tk.Button(frame, text="Deletar Cliente", bg="red", fg="white", command=lambda i=i: deletar_cliente(i))
+        btn_del.pack(side="right", padx=2)
 
     if len(clientes) == 0:
         tk.Label(janela_confirma, text="Nenhum cliente pendente.").pack(pady=20)
