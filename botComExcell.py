@@ -9,6 +9,7 @@ import pyautogui
 import traceback
 import os
 import webbrowser
+from tkcalendar import DateEntry  # <-- IMPORTANTE
 
 ARQUIVO_EXCEL = "clientes.xlsx"
 
@@ -23,7 +24,7 @@ def abrir_whatsapp_web():
     if not hasattr(abrir_whatsapp_web, "ja_abriu"):
         webbrowser.open("https://web.whatsapp.com")
         print("▶️ Abrindo WhatsApp Web...")
-        time.sleep(10)  # tempo para escanear QR Code
+        time.sleep(10)  
         abrir_whatsapp_web.ja_abriu = True
 
 def enviar_mensagem_whatsapp(telefone, mensagem):
@@ -32,7 +33,7 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
         abrir_whatsapp_web()
 
         busca = None
-        for _ in range(10):  # tenta localizar por até 10s
+        for _ in range(10):
             busca = pyautogui.locateCenterOnScreen("barra_busca.png", confidence=0.8)
             if busca:
                 break
@@ -116,10 +117,9 @@ def exibir_confirmacoes(clientes):
     def deletar_cliente(i):
         nome = clientes.at[i, "Nome"]
         df = pd.read_excel(ARQUIVO_EXCEL)
-        df = df[df["Nome"] != nome]  # remove o cliente
+        df = df[df["Nome"] != nome]
         df.to_excel(ARQUIVO_EXCEL, index=False)
-
-        messagebox.showinfo("Cliente Deletado", f"{nome} foi removido da lista de clientes.")
+        messagebox.showinfo("Cliente Deletado", f"{nome} foi removido do sistema.")
         janela_confirma.destroy()
         atualizar_vencimento_restante()
 
@@ -144,13 +144,13 @@ def exibir_confirmacoes(clientes):
         nome = row["Nome"]
         telefone = row["Telefone"]
         vencimento = row["Vencimento"]
-        tk.Label(frame, text=f"{nome} - {telefone} | Vencido desde: {vencimento}", width=45, anchor="w").pack(side="left")
+        tk.Label(frame, text=f"{nome} - {telefone} | Vencido desde: {vencimento}", width=50, anchor="w").pack(side="left")
 
-        btn_conf = tk.Button(frame, text="Confirmar Pagamento", command=lambda i=i: confirmar_pagamento(i))
-        btn_conf.pack(side="right", padx=2)
+        btn_confirma = tk.Button(frame, text="Confirmar Pagamento", command=lambda i=i: confirmar_pagamento(i))
+        btn_confirma.pack(side="right", padx=5)
 
-        btn_del = tk.Button(frame, text="Deletar Cliente", bg="red", fg="white", command=lambda i=i: deletar_cliente(i))
-        btn_del.pack(side="right", padx=2)
+        btn_delete = tk.Button(frame, text="Deletar Cliente", command=lambda i=i: deletar_cliente(i))
+        btn_delete.pack(side="right")
 
     if len(clientes) == 0:
         tk.Label(janela_confirma, text="Nenhum cliente pendente.").pack(pady=20)
@@ -159,12 +159,13 @@ def salvar_cliente():
     nome = entry_nome.get()
     telefone = entry_telefone.get()
     data_criacao = datetime.today().date()
-    vencimento = data_criacao + relativedelta(months=1)
-    pagou = var_pagamento.get()
+    vencimento = entry_vencimento.get_date()  # <-- pega a data do calendário
 
-    if not nome or not telefone:
+    if not nome or not telefone or not vencimento:
         messagebox.showerror("Erro", "Preencha todos os campos.")
         return
+
+    pagou = var_pagamento.get()
 
     try:
         df = pd.read_excel(ARQUIVO_EXCEL)
@@ -180,14 +181,6 @@ def salvar_cliente():
     entry_nome.delete(0, tk.END)
     entry_telefone.delete(0, tk.END)
     var_pagamento.set(False)
-    atualizar_vencimento_automatico()
-
-def atualizar_vencimento_automatico():
-    vencimento = (datetime.today().date() + relativedelta(months=1)).strftime("%d/%m/%Y")
-    entry_vencimento.config(state="normal")
-    entry_vencimento.delete(0, tk.END)
-    entry_vencimento.insert(0, vencimento)
-    entry_vencimento.config(state="readonly")
 
 def iniciar_envio_em_thread():
     thread = threading.Thread(target=verificaData_com_progresso)
@@ -196,7 +189,7 @@ def iniciar_envio_em_thread():
 # ------------------- INTERFACE -------------------
 janela = tk.Tk()
 janela.title("Cadastro e Controle de Clientes")
-janela.geometry("450x520")
+janela.geometry("480x550")
 
 tk.Label(janela, text="Nome:").pack(pady=5)
 entry_nome = tk.Entry(janela, width=35)
@@ -206,10 +199,10 @@ tk.Label(janela, text="Telefone (somente números):").pack(pady=5)
 entry_telefone = tk.Entry(janela, width=35)
 entry_telefone.pack()
 
-tk.Label(janela, text="Vencimento (automático):").pack(pady=5)
-entry_vencimento = tk.Entry(janela, width=35, state="readonly")
-entry_vencimento.pack()
-atualizar_vencimento_automatico()
+tk.Label(janela, text="Data de Vencimento:").pack(pady=5)
+entry_vencimento = DateEntry(janela, width=32, background='darkblue',
+                             foreground='white', borderwidth=2, date_pattern='dd/mm/yyyy')
+entry_vencimento.pack(pady=5)
 
 var_pagamento = tk.BooleanVar()
 check_pagamento = tk.Checkbutton(janela, text="Pagou?", variable=var_pagamento)
