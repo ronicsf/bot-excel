@@ -23,7 +23,7 @@ def abrir_whatsapp_web():
     if not hasattr(abrir_whatsapp_web, "ja_abriu"):
         webbrowser.open("https://web.whatsapp.com")
         print("▶️ Abrindo WhatsApp Web...")
-        time.sleep(20)  # Tempo para escanear o QR Code
+        time.sleep(10)  # tempo para escanear QR Code
         abrir_whatsapp_web.ja_abriu = True
 
 def enviar_mensagem_whatsapp(telefone, mensagem):
@@ -31,9 +31,8 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
         print(f"▶️ Enviando para {telefone}...")
         abrir_whatsapp_web()
 
-        # Localiza o campo de busca usando imagem
         busca = None
-        for _ in range(10):  # tenta localizar por até 10 segundos
+        for _ in range(10):  # tenta localizar por até 10s
             busca = pyautogui.locateCenterOnScreen("barra_busca.png", confidence=0.8)
             if busca:
                 break
@@ -45,13 +44,11 @@ def enviar_mensagem_whatsapp(telefone, mensagem):
         pyautogui.click(busca)
         time.sleep(1)
 
-        # Digita o telefone no campo de busca
         pyautogui.write(telefone)
         time.sleep(2)
         pyautogui.press("enter")
         time.sleep(2)
 
-        # Escreve e envia a mensagem
         pyautogui.write(mensagem)
         time.sleep(1)
         pyautogui.press("enter")
@@ -71,11 +68,12 @@ def verificaData_com_progresso():
     df["Pagou"] = df["Pagou"].fillna(False)
 
     hoje = datetime.today().date()
-    clientes_pendentes = df[(df["Vencimento"] == hoje) & (df["Pagou"] == False)]
+    # agora pega clientes vencidos ou que vencem hoje
+    clientes_pendentes = df[(df["Vencimento"] <= hoje) & (df["Pagou"] == False)]
 
     total = len(clientes_pendentes)
     if total == 0:
-        messagebox.showinfo("Nenhum vencimento hoje", "Nenhum cliente com vencimento hoje e pendente.")
+        messagebox.showinfo("Nenhum vencimento", "Nenhum cliente pendente ou vencido encontrado.")
         return
 
     progresso["maximum"] = total
@@ -88,7 +86,7 @@ def verificaData_com_progresso():
         if not telefone.startswith('+'):
             telefone = '+55' + telefone
 
-        mensagem = f"Olá {nome}, seu plano vence hoje. Entre em contato para renovar! 📆"
+        mensagem = f"Olá {nome}, seu plano venceu em {row['Vencimento']}. Entre em contato para renovar! 📆"
         status_label.config(text=f"Enviando para: {nome}")
         janela.update_idletasks()
 
@@ -120,15 +118,15 @@ def exibir_confirmacoes(clientes):
         df_atual = pd.read_excel(ARQUIVO_EXCEL)
         df_atual["Vencimento"] = pd.to_datetime(df_atual["Vencimento"]).dt.date
         df_atual["Pagou"] = df_atual["Pagou"].fillna(False)
-        pendentes_restantes = df_atual[(df_atual["Vencimento"] == datetime.today().date()) & (df_atual["Pagou"] == False)]
+        pendentes_restantes = df_atual[(df_atual["Vencimento"] <= datetime.today().date()) & (df_atual["Pagou"] == False)]
         if not pendentes_restantes.empty:
             exibir_confirmacoes(pendentes_restantes)
 
     janela_confirma = tk.Toplevel(janela)
     janela_confirma.title("Confirmar Pagamentos")
-    janela_confirma.geometry("400x300")
+    janela_confirma.geometry("450x350")
 
-    tk.Label(janela_confirma, text="Clientes com vencimento hoje e pendentes:").pack(pady=10)
+    tk.Label(janela_confirma, text="Clientes vencidos ou vencendo hoje:").pack(pady=10)
 
     for i, row in clientes.iterrows():
         frame = tk.Frame(janela_confirma)
@@ -136,7 +134,8 @@ def exibir_confirmacoes(clientes):
 
         nome = row["Nome"]
         telefone = row["Telefone"]
-        tk.Label(frame, text=f"{nome} - {telefone}", width=30, anchor="w").pack(side="left")
+        vencimento = row["Vencimento"]
+        tk.Label(frame, text=f"{nome} - {telefone} | Vencido desde: {vencimento}", width=50, anchor="w").pack(side="left")
         btn = tk.Button(frame, text="Confirmar Pagamento", command=lambda i=i: confirmar_pagamento(i))
         btn.pack(side="right")
 
@@ -184,7 +183,7 @@ def iniciar_envio_em_thread():
 # ------------------- INTERFACE -------------------
 janela = tk.Tk()
 janela.title("Cadastro e Controle de Clientes")
-janela.geometry("420x500")
+janela.geometry("450x520")
 
 tk.Label(janela, text="Nome:").pack(pady=5)
 entry_nome = tk.Entry(janela, width=35)
