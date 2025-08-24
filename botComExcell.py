@@ -50,16 +50,39 @@ def encontrar_indice(df, nome, telefone):
     return match2.index[0] if not match2.empty else None
 
 # =================== SISTEMA DE LICENÇA ===================
+# =================== SISTEMA DE LICENÇA ===================
+import secrets
+import uuid
+
+UUID_FILE = "app_uuid.txt"
+
+def get_or_create_uuid() -> str:
+    """Obtém o UUID fixo para este executável, cria se não existir"""
+    if os.path.exists(UUID_FILE):
+        with open(UUID_FILE, "r") as f:
+            return f.read().strip()
+    else:
+        novo_uuid = str(uuid.uuid4())
+        with open(UUID_FILE, "w") as f:
+            f.write(novo_uuid)
+        return novo_uuid
+
 def verificar_licenca():
+    """Verifica se existe chave válida neste executável"""
     if not os.path.exists(ARQUIVO_LICENCA):
         return False
     try:
         with open(ARQUIVO_LICENCA, "r") as f:
             chave = f.read().strip()
         conteudo = base64.b64decode(chave).decode()
-        if not conteudo.startswith("EXPIRA:"):
+
+        partes = dict(p.split(":") for p in conteudo.split("|"))
+        app_uuid = get_or_create_uuid()
+        data_expira = datetime.fromisoformat(partes["EXPIRA"]).date()
+
+        # Verifica se UUID corresponde e se ainda está no prazo
+        if partes["UUID"] != app_uuid:
             return False
-        data_expira = datetime.strptime(conteudo.split(":")[1], "%Y-%m-%d").date()
         return datetime.today().date() <= data_expira
     except:
         return False
@@ -73,17 +96,24 @@ def pedir_licenca():
         chave = entry_chave.get().strip()
         try:
             conteudo = base64.b64decode(chave).decode()
-            if not conteudo.startswith("EXPIRA:"):
-                raise Exception("Formato inválido")
-            data_expira = datetime.strptime(conteudo.split(":")[1], "%Y-%m-%d").date()
+            partes = dict(p.split(":") for p in conteudo.split("|"))
+
+            app_uuid = get_or_create_uuid()
+            data_expira = datetime.fromisoformat(partes["EXPIRA"]).date()
+
+            if partes["UUID"] != app_uuid:
+                messagebox.showerror("Erro", "Esta chave não pertence a este executável.")
+                return
+
             if datetime.today().date() > data_expira:
                 messagebox.showerror("Licença Expirada", "Sua licença expirou. Solicite uma nova.")
                 return
+
             salvar_licenca(chave)
             messagebox.showinfo("Sucesso", f"Licença válida até {data_expira}")
             licenca_janela.destroy()
             iniciar_programa()
-        except:
+        except Exception:
             messagebox.showerror("Erro", "Chave inválida.")
 
     licenca_janela = tk.Tk()
@@ -94,6 +124,7 @@ def pedir_licenca():
     entry_chave.pack(pady=5)
     tk.Button(licenca_janela, text="Ativar", command=validar_chave).pack(pady=10)
     licenca_janela.mainloop()
+
 
 # =================== WHATSAPP ===================
 def abrir_whatsapp_web():

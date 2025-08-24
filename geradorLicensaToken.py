@@ -1,31 +1,48 @@
 import base64
 import secrets
+import uuid
 from datetime import datetime, timedelta
+import os
+
+# Arquivo para armazenar o UUID do executável
+UUID_FILE = "app_uuid.txt"
+
+def get_or_create_uuid() -> str:
+    """Obtém o UUID fixo para este executável, cria se não existir"""
+    if os.path.exists(UUID_FILE):
+        with open(UUID_FILE, "r") as f:
+            return f.read().strip()
+    else:
+        novo_uuid = str(uuid.uuid4())
+        with open(UUID_FILE, "w") as f:
+            f.write(novo_uuid)
+        return novo_uuid
+
 
 def gerar_chave(dias_validade: int) -> tuple[str, str]:
-    """Gera chave de licença válida por X dias"""
+    """Gera chave de licença única para este executável"""
     data_expira = (datetime.today().date() + timedelta(days=dias_validade)).isoformat()
+    token_unico = secrets.token_hex(8)  # parte aleatória
+    app_uuid = get_or_create_uuid()      # identificador único
 
-    # Gera um token aleatório seguro
-    token_unico = secrets.token_hex(8)  # 16 caracteres aleatórios
-
-    conteudo = f"EXPIRA:{data_expira}|TOKEN:{token_unico}"
+    conteudo = f"UUID:{app_uuid}|EXPIRA:{data_expira}|TOKEN:{token_unico}"
     chave = base64.b64encode(conteudo.encode()).decode()
 
     return chave, data_expira
 
 
 def validar_chave(chave: str) -> bool:
-    """Valida se a chave ainda é válida"""
+    """Valida se a chave pertence a este executável e se ainda está no prazo"""
     try:
-        # Decodifica a chave
         conteudo = base64.b64decode(chave.encode()).decode()
-
-        # Extrai os dados
         partes = dict(p.split(":") for p in conteudo.split("|"))
+
+        app_uuid = get_or_create_uuid()
         data_expira = datetime.fromisoformat(partes["EXPIRA"]).date()
 
-        # Verifica se está no prazo
+        # Valida UUID + prazo
+        if partes["UUID"] != app_uuid:
+            return False
         return datetime.today().date() <= data_expira
 
     except Exception:
