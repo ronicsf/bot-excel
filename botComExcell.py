@@ -10,7 +10,9 @@ import traceback
 import os
 import webbrowser
 import base64
-from tkcalendar import DateEntry   # 📅 calendário
+from tkcalendar import DateEntry 
+import cv2 
+import numpy as np
 
 ARQUIVO_EXCEL = "clientes.xlsx"
 ARQUIVO_LICENCA = "licenca.txt"
@@ -49,7 +51,6 @@ def encontrar_indice(df, nome, telefone):
     match2 = df[df["Nome"] == nome]
     return match2.index[0] if not match2.empty else None
 
-# =================== SISTEMA DE LICENÇA ===================
 # =================== SISTEMA DE LICENÇA ===================
 import secrets
 import uuid
@@ -134,33 +135,78 @@ def abrir_whatsapp_web():
         time.sleep(10)
         abrir_whatsapp_web.ja_abriu = True
 
+def localizar_imagem_cv2(img_path, confianca=0.6):
+    """Localiza imagem na tela usando OpenCV (mais tolerante que PyAutoGUI puro)."""
+    screenshot = pyautogui.screenshot()
+    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+    template = cv2.imread(img_path, cv2.IMREAD_COLOR)
+    if template is None:
+        raise Exception(f"Não foi possível ler a imagem {img_path}")
+
+    result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+
+    if max_val >= confianca:
+        center_x = max_loc[0] + template.shape[1] // 2
+        center_y = max_loc[1] + template.shape[0] // 2
+        return center_x, center_y
+    return None
+
 def enviar_mensagem_whatsapp(telefone, mensagem):
     """
-    Requer a imagem 'barra_busca.png' (print do campo de busca do WhatsApp Web) na mesma pasta.
+    Envia mensagem pelo WhatsApp Web usando OpenCV.
+    Suporta tema escuro e claro.
     """
     try:
         abrir_whatsapp_web()
         busca = None
+        tema = None
+
+        # Tenta localizar o campo de busca até 15 vezes
         for _ in range(15):
-            busca = pyautogui.locateCenterOnScreen("barra_busca.png", confidence=0.8)
-            if busca:
+            pos_dark = localizar_imagem_cv2("barra_busca_dark.png", confianca=0.6)
+            if pos_dark:
+                busca = pos_dark
+                tema = "escuro"
                 break
+
+            pos_light = localizar_imagem_cv2("barra_busca_light.png", confianca=0.6)
+            if pos_light:
+                busca = pos_light
+                tema = "claro"
+                break
+
             time.sleep(1)
+
         if not busca:
-            raise Exception("❌ Campo de busca não encontrado (barra_busca.png).")
+            screenshot_path = "erro_whatsapp.png"
+            pyautogui.screenshot(screenshot_path)
+            raise Exception(
+                f"❌ Campo de busca não encontrado.\n"
+                f"Screenshot salvo em {screenshot_path}. "
+                f"Compare com as imagens barra_busca_dark.png / barra_busca_light.png."
+            )
+
+        # Clica no campo e envia a mensagem
         pyautogui.click(busca)
         time.sleep(0.8)
         pyautogui.write(telefone)
-        time.sleep(1.8)
-        pyautogui.press("enter")
         time.sleep(1.5)
+        pyautogui.press("enter")
+        time.sleep(1.0)
         pyautogui.write(mensagem)
         time.sleep(0.6)
         pyautogui.press("enter")
         time.sleep(1.0)
+
+        print(f"✅ Mensagem enviada para {telefone} no tema {tema.upper()}")
+        return tema
+
     except Exception as e:
         traceback.print_exc()
         print(f"❌ Erro ao enviar mensagem: {e}")
+        return None
 
 # =================== CLIENTES: CADASTRO ===================
 def salvar_cliente():
