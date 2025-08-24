@@ -52,81 +52,91 @@ def encontrar_indice(df, nome, telefone):
     return match2.index[0] if not match2.empty else None
 
 # =================== SISTEMA DE LICENÇA ===================
-import secrets
+
+import os
+import base64
 import uuid
+from datetime import datetime
+import tkinter as tk
+from tkinter import messagebox
 
-UUID_FILE = "app_uuid.txt"
+ARQUIVO_LICENCA = "licenca.txt"
 
-def get_or_create_uuid() -> str:
-    """Obtém o UUID fixo para este executável, cria se não existir"""
-    if os.path.exists(UUID_FILE):
-        with open(UUID_FILE, "r") as f:
-            return f.read().strip()
-    else:
-        novo_uuid = str(uuid.uuid4())
-        with open(UUID_FILE, "w") as f:
-            f.write(novo_uuid)
-        return novo_uuid
+# =================== LICENÇA ===================
+# =================== SISTEMA DE LICENÇA ===================
+import os
+import base64
+import uuid
+from datetime import datetime
+import tkinter as tk
+from tkinter import messagebox
 
-def verificar_licenca():
-    """Verifica se existe chave válida neste executável"""
-    if not os.path.exists(ARQUIVO_LICENCA):
-        return False
+ARQUIVO_LICENCA = "licenca.txt"
+
+def pegar_mac():
+    """Retorna o MAC da máquina no formato hexadecimal padrão"""
+    mac_int = uuid.getnode()  # retorna MAC como inteiro
+    mac_str = ':'.join(f'{(mac_int >> ele) & 0xff:02X}' for ele in range(40, -1, -8))
+    return mac_str
+
+def verificar_licenca(chave: str) -> tuple[bool, str]:
+    """Valida a chave de licença fornecida"""
     try:
-        with open(ARQUIVO_LICENCA, "r") as f:
-            chave = f.read().strip()
         conteudo = base64.b64decode(chave).decode()
-
         partes = dict(p.split(":") for p in conteudo.split("|"))
-        app_uuid = get_or_create_uuid()
+
+        mac_pc = pegar_mac().replace(":", "").upper()  # remove ':' e coloca maiúsculas
         data_expira = datetime.fromisoformat(partes["EXPIRA"]).date()
+        mac_licenca = partes["MAC"].replace(":", "").upper()
 
-        # Verifica se UUID corresponde e se ainda está no prazo
-        if partes["UUID"] != app_uuid:
-            return False
-        return datetime.today().date() <= data_expira
-    except:
-        return False
+        if mac_licenca != mac_pc:
+            return False, "Chave não pertence a este computador."
+        if datetime.today().date() > data_expira:
+            return False, "Licença expirada."
+        return True, f"Licença válida até {data_expira}"
+    except Exception as e:
+        return False, f"Chave inválida ({e})"
 
-def salvar_licenca(chave):
+def salvar_licenca(chave: str):
     with open(ARQUIVO_LICENCA, "w") as f:
         f.write(chave)
 
 def pedir_licenca():
+    """Abre a janela para o usuário inserir a licença"""
     def validar_chave():
         chave = entry_chave.get().strip()
-        try:
-            conteudo = base64.b64decode(chave).decode()
-            partes = dict(p.split(":") for p in conteudo.split("|"))
-
-            app_uuid = get_or_create_uuid()
-            data_expira = datetime.fromisoformat(partes["EXPIRA"]).date()
-
-            if partes["UUID"] != app_uuid:
-                messagebox.showerror("Erro", "Esta chave não pertence a este executável.")
-                return
-
-            if datetime.today().date() > data_expira:
-                messagebox.showerror("Licença Expirada", "Sua licença expirou. Solicite uma nova.")
-                return
-
+        valido, msg = verificar_licenca(chave)
+        if valido:
             salvar_licenca(chave)
-            messagebox.showinfo("Sucesso", f"Licença válida até {data_expira}")
+            messagebox.showinfo("Sucesso", msg)
             licenca_janela.destroy()
-            iniciar_programa()
-        except Exception:
-            messagebox.showerror("Erro", "Chave inválida.")
+            iniciar_programa()  # chama seu código principal
+        else:
+            messagebox.showerror("Erro", msg)
 
     licenca_janela = tk.Tk()
     licenca_janela.title("Ativação Necessária")
     licenca_janela.geometry("400x200")
-    tk.Label(licenca_janela, text="Insira sua chave de licença:").pack(pady=10)
+    tk.Label(licenca_janela, text=f"MAC da sua máquina:\n{pegar_mac()}").pack(pady=10)
+    tk.Label(licenca_janela, text="Insira sua chave de licença:").pack(pady=5)
     entry_chave = tk.Entry(licenca_janela, width=45)
     entry_chave.pack(pady=5)
     tk.Button(licenca_janela, text="Ativar", command=validar_chave).pack(pady=10)
     licenca_janela.mainloop()
 
-
+# =================== MAIN ===================
+if __name__ == "__main__":
+    if os.path.exists(ARQUIVO_LICENCA):
+        with open(ARQUIVO_LICENCA, "r") as f:
+            chave = f.read().strip()
+        valido, msg = verificar_licenca(chave)
+        if valido:
+            iniciar_programa()
+        else:
+            print("Licença inválida:", msg)
+            pedir_licenca()
+    else:
+        pedir_licenca()
 # =================== WHATSAPP ===================
 def abrir_whatsapp_web():
     """Abre WhatsApp Web apenas uma vez."""
@@ -485,7 +495,14 @@ def iniciar_programa():
 
 # =================== MAIN ===================
 if __name__ == "__main__":
-    if verificar_licenca():
-        iniciar_programa()
+    if os.path.exists(ARQUIVO_LICENCA):
+        with open(ARQUIVO_LICENCA, "r") as f:
+            chave = f.read().strip()
+        valido, msg = verificar_licenca(chave)
+        if valido:
+            iniciar_programa()  # chama seu código principal
+        else:
+            print("Licença inválida:", msg)
+            pedir_licenca()
     else:
         pedir_licenca()
